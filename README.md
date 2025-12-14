@@ -51,20 +51,30 @@ nix develop
 ### Command Line Options
 
 ```bash
-# Basic usage
+# Basic usage (localhost only)
 nix run
 
-# Listen on all interfaces (for remote access)
-nix run -- --listen
+# Listen on all interfaces (for LAN access)
+nix run .#listen
+
+# Remote access with authentication (recommended for network access)
+nix run .#remote                           # Default: admin:admin
+SD_WEBUI_AUTH=user:pass nix run .#remote   # Custom credentials
+
+# Remote access via Gradio public tunnel
+nix run .#share
 
 # Enable API
-nix run -- --api
+nix run .#api
 
 # Custom port
 nix run -- --port 7861
 
 # Open browser automatically
 nix run -- --open
+
+# Debug mode
+nix run -- --debug
 
 # Combine options
 nix run -- --listen --api --port 7861
@@ -138,7 +148,7 @@ nix flake check
 # Format Nix files
 nix fmt
 
-# Lint shell scripts
+# Lint Python code (ruff)
 nix run .#lint
 
 # Check for updates

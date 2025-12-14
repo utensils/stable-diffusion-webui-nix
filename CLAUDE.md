@@ -11,7 +11,7 @@ nix build
 # Run Stable Diffusion WebUI
 nix run                     # Default (localhost only)
 nix run .#api               # With API enabled
-nix run .#listen            # Listen on network (localhost access only)
+nix run .#listen            # Listen on all interfaces (0.0.0.0)
 nix run .#remote            # Remote access with auth (admin:admin)
 nix run .#share             # Remote access via Gradio public tunnel
 nix run -- --debug          # With debug logging
@@ -139,12 +139,12 @@ nix run .#remote                           # Default admin:admin
 SD_WEBUI_AUTH=user:pass nix run .#remote   # Custom credentials
 ```
 
-### Option 4: Direct Listen (Limited)
+### Option 4: Direct Listen
 
-Basic network listening without authentication. Only works properly from localhost.
+Basic network listening without authentication. Works with the new `~/sd-webui` default path.
 
 ```bash
-nix run .#listen                   # 403 errors expected from remote clients
+nix run .#listen                   # Listen on 0.0.0.0:7860
 ```
 
 ### Troubleshooting 403 Errors
@@ -159,10 +159,19 @@ If you see 403 errors for `style.css`, `script.js`, or other static files:
 
 ## Updating SD WebUI Version
 
-SD WebUI source is tracked as a flake input, so updating is simple:
+SD WebUI source is pinned to a specific tag (currently `v1.10.1`) in the flake input.
+
+To update to a new version, edit `flake.nix` and change the tag:
+
+```nix
+sd-webui-src = {
+  url = "github:AUTOMATIC1111/stable-diffusion-webui/v1.10.1";  # Change tag here
+  flake = false;
+};
+```
+
+Then update the lock file:
 
 ```bash
 nix flake update sd-webui-src
 ```
-
-This fetches the latest HEAD from GitHub. The version shown will be the git short rev (e.g., `ae05379`).
