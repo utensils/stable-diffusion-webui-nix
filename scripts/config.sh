@@ -24,7 +24,8 @@ debug_vars() {
 trap 'echo "ERROR in config.sh: Command failed with exit code $? at line $LINENO"' ERR
 
 # Version and port configuration
-SD_WEBUI_VERSION="1.10.1"
+# Version is substituted from Nix flake input (git short rev)
+SD_WEBUI_VERSION="@sdWebuiVersion@"
 SD_WEBUI_PORT="7860"
 
 # CUDA configuration (can be overridden via environment)
@@ -59,6 +60,7 @@ PYTHON_ENV="@pythonEnv@/bin/python"
 SD_WEBUI_SRC="@sdWebuiSrc@"
 
 # Directory lists for creation (single line to avoid newline issues)
+# shellcheck disable=SC2034  # Used by install.sh when sourced
 declare -A DIRECTORIES=(
   [base]="$BASE_DIR $CODE_DIR"
   [main]="$BASE_DIR/outputs $BASE_DIR/outputs/txt2img-images $BASE_DIR/outputs/img2img-images $BASE_DIR/outputs/extras-images $BASE_DIR/outputs/txt2img-grids $BASE_DIR/outputs/img2img-grids"
@@ -67,6 +69,7 @@ declare -A DIRECTORIES=(
 )
 
 # Python packages to install (as arrays for proper handling)
+# shellcheck disable=SC2034  # Used by install.sh when sourced
 BASE_PACKAGES=(pip setuptools wheel)
 
 # PyTorch installation will be determined dynamically based on GPU availability

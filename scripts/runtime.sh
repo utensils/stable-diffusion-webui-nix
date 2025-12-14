@@ -87,9 +87,19 @@ build_sd_webui_args() {
 
     # Add paths to Gradio's allowed_paths to fix 403 errors when listening on network
     # This is required because Gradio applies stricter security when --listen is used
+    # We add explicit paths for all directories that serve static files
     args+=("--gradio-allowed-path" "$CODE_DIR")
     args+=("--gradio-allowed-path" "$BASE_DIR")
     args+=("--gradio-allowed-path" "$OUTPUTS_DIR")
+    args+=("--gradio-allowed-path" "$CODE_DIR/javascript")
+    args+=("--gradio-allowed-path" "$CODE_DIR/extensions-builtin")
+    args+=("--gradio-allowed-path" "$BASE_DIR/extensions")
+
+    # Enable insecure extension access for remote use (required for --listen)
+    # This allows extensions to be managed remotely
+    if [ "$LISTEN_MODE" = true ]; then
+        args+=("--enable-insecure-extension-access")
+    fi
 
     # Add any additional arguments passed through (ARGS is set in config.sh)
     # shellcheck disable=SC2153
@@ -115,9 +125,17 @@ start_with_browser() {
     sd_webui_args+=("--skip-torch-cuda-test")
     sd_webui_args+=("--data-dir" "$BASE_DIR")
     # Add paths to Gradio's allowed_paths - use realpath for canonical paths
+    # Include all directories that serve static files to prevent 403 errors
     sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR")")
     sd_webui_args+=("--gradio-allowed-path" "$(realpath "$BASE_DIR")")
     sd_webui_args+=("--gradio-allowed-path" "$(realpath "$OUTPUTS_DIR")")
+    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR/javascript")")
+    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR/extensions-builtin")")
+    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$BASE_DIR/extensions")")
+    # Enable insecure extension access for remote use when listening
+    if [ "$LISTEN_MODE" = true ]; then
+        sd_webui_args+=("--enable-insecure-extension-access")
+    fi
     # Add any user-provided arguments
     sd_webui_args+=("${ARGS[@]}")
 
@@ -169,9 +187,17 @@ start_normal() {
     sd_webui_args+=("--skip-torch-cuda-test")
     sd_webui_args+=("--data-dir" "$BASE_DIR")
     # Add paths to Gradio's allowed_paths - use realpath for canonical paths
+    # Include all directories that serve static files to prevent 403 errors
     sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR")")
     sd_webui_args+=("--gradio-allowed-path" "$(realpath "$BASE_DIR")")
     sd_webui_args+=("--gradio-allowed-path" "$(realpath "$OUTPUTS_DIR")")
+    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR/javascript")")
+    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR/extensions-builtin")")
+    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$BASE_DIR/extensions")")
+    # Enable insecure extension access for remote use when listening
+    if [ "$LISTEN_MODE" = true ]; then
+        sd_webui_args+=("--enable-insecure-extension-access")
+    fi
     # Add any user-provided arguments
     sd_webui_args+=("${ARGS[@]}")
 

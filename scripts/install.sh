@@ -29,22 +29,74 @@ create_directories() {
 
 # Install SD WebUI core
 install_sd_webui() {
-    log_section "Installing Stable Diffusion WebUI $SD_WEBUI_VERSION"
+    local version_file="$CODE_DIR/VERSION"
+    local needs_install=false
 
-    # Remove existing directory (but keep symlinked content safe)
-    log_info "Preparing fresh installation in $CODE_DIR"
-    rm -rf "$CODE_DIR"
-    mkdir -p "$CODE_DIR"
+    # Check if we need to install/update
+    if [ ! -d "$CODE_DIR" ]; then
+        log_info "First time installation"
+        needs_install=true
+    elif [ ! -f "$version_file" ]; then
+        log_info "No version file found, reinstalling"
+        needs_install=true
+    else
+        local installed_version
+        installed_version=$(cat "$version_file")
+        if [ "$installed_version" != "$SD_WEBUI_VERSION" ]; then
+            log_info "Version changed ($installed_version -> $SD_WEBUI_VERSION), updating"
+            needs_install=true
+        else
+            log_info "SD WebUI $SD_WEBUI_VERSION already installed, skipping"
+        fi
+    fi
 
-    # Copy the SD WebUI source
-    log_info "Copying SD WebUI source code"
-    cp -r "$SD_WEBUI_SRC"/* "$CODE_DIR/"
-    echo "$SD_WEBUI_VERSION" > "$CODE_DIR/VERSION"
+    if [ "$needs_install" = true ]; then
+        log_section "Installing Stable Diffusion WebUI $SD_WEBUI_VERSION"
 
-    # Ensure proper permissions
-    chmod -R u+rw "$CODE_DIR"
+        # Preserve runtime directories that SD WebUI creates (repositories, cache, etc.)
+        local temp_preserve=""
+        if [ -d "$CODE_DIR/repositories" ]; then
+            log_info "Preserving cloned repositories..."
+            temp_preserve=$(mktemp -d)
+            mv "$CODE_DIR/repositories" "$temp_preserve/"
+        fi
 
-    log_info "SD WebUI core installed successfully"
+        # Remove existing directory
+        log_info "Preparing installation in $CODE_DIR"
+        rm -rf "$CODE_DIR"
+        mkdir -p "$CODE_DIR"
+
+        # Copy the SD WebUI source
+        log_info "Copying SD WebUI source code"
+        cp -r "$SD_WEBUI_SRC"/* "$CODE_DIR/"
+        echo "$SD_WEBUI_VERSION" > "$CODE_DIR/VERSION"
+
+        # Restore preserved directories
+        if [ -n "$temp_preserve" ] && [ -d "$temp_preserve/repositories" ]; then
+            log_info "Restoring preserved repositories..."
+            mv "$temp_preserve/repositories" "$CODE_DIR/"
+            rmdir "$temp_preserve"
+        fi
+
+        # Ensure proper permissions
+        chmod -R u+rw "$CODE_DIR"
+
+        # Initialize a minimal git repository so SD WebUI can detect version
+        # This prevents "fatal: not a git repository" errors
+        log_debug "Initializing git repository for version detection"
+        (
+            cd "$CODE_DIR" || exit 1
+            git init -q
+            git config user.email "nix@localhost"
+            git config user.name "Nix Build"
+            git add -A
+            git commit -q -m "SD WebUI $SD_WEBUI_VERSION (Nix package)"
+            # Tag with the version for proper version detection
+            git tag -a "v$SD_WEBUI_VERSION" -m "Version $SD_WEBUI_VERSION"
+        ) 2>/dev/null || log_warn "Could not initialize git repository"
+
+        log_info "SD WebUI core installed successfully"
+    fi
 }
 
 # Detect GPU and determine PyTorch installation

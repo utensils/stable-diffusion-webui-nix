@@ -48,7 +48,7 @@
         # Process each script file individually using replaceVars
         # Only replace variables that actually exist in each script
         configScript = pkgs.replaceVars ./scripts/config.sh {
-          inherit pythonEnv;
+          inherit pythonEnv sdWebuiVersion;
           sdWebuiSrc = sd-webui-src;
         };
 
@@ -324,6 +324,40 @@
             );
             meta = {
               description = "Run SD WebUI with network listening enabled";
+            };
+          };
+
+          # App with network listening and authentication (for remote access)
+          remote = {
+            type = "app";
+            program = toString (
+              pkgs.writeShellScript "sd-webui-remote" ''
+                # Default credentials - override with --gradio-auth user:pass
+                GRADIO_AUTH="''${SD_WEBUI_AUTH:-admin:admin}"
+                echo "Starting SD WebUI for remote access with authentication"
+                echo "Default login: admin / admin (set SD_WEBUI_AUTH=user:pass to change)"
+                exec ${packages.default}/bin/sd-webui --listen --gradio-auth "$GRADIO_AUTH" "$@"
+              ''
+            );
+            meta = {
+              description = "Run SD WebUI with network listening and authentication for remote access";
+            };
+          };
+
+          # App with Gradio public sharing (creates a public tunnel URL)
+          # This is the most reliable way to access SD WebUI remotely
+          share = {
+            type = "app";
+            program = toString (
+              pkgs.writeShellScript "sd-webui-share" ''
+                echo "Starting SD WebUI with Gradio sharing enabled..."
+                echo "A public URL will be generated (format: https://xxxxx.gradio.live)"
+                echo "Note: The share link expires after 72 hours."
+                exec ${packages.default}/bin/sd-webui --share "$@"
+              ''
+            );
+            meta = {
+              description = "Run SD WebUI with Gradio sharing for remote access via public tunnel";
             };
           };
 
