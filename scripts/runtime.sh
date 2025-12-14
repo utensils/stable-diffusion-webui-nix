@@ -98,15 +98,17 @@ build_sd_webui_args() {
 
     # macOS Apple Silicon (MPS) specific flags
     # MPS has issues with half-precision (fp16) operations that cause bad/corrupted images
-    # See: https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Installation-on-Apple-Silicon
+    # See: https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Troubleshooting#green-or-black-screen
+    # Note: PyTorch 2.5+ has known MPS regressions - may need to downgrade to 2.3.1 or 2.4.1
     if [[ "$OSTYPE" == "darwin"* ]] && [[ $(uname -m) == "arm64" ]]; then
+        # --skip-torch-cuda-test: Skip CUDA test (not applicable on Mac)
+        # Already added above, so we skip it here
         # --no-half: Run model in full precision (fp32) - required for MPS stability
         SD_WEBUI_ARGS+=("--no-half")
-        # --no-half-vae: VAE in full precision to prevent black/green images
-        SD_WEBUI_ARGS+=("--no-half-vae")
-        # --opt-split-attention-v1: Recommended attention optimization for Apple Silicon
-        SD_WEBUI_ARGS+=("--opt-split-attention-v1")
-        log_debug "Added MPS-specific flags: --no-half --no-half-vae --opt-split-attention-v1"
+        # --use-cpu all: Run everything on CPU to avoid MPS bugs in PyTorch 2.5+
+        # This is slower but more reliable until MPS support matures
+        SD_WEBUI_ARGS+=("--use-cpu" "all")
+        log_debug "Added MPS-specific flags: --no-half --use-cpu all (CPU mode for stability)"
     fi
 
     # Enable insecure extension access for remote use (required for --listen)

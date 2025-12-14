@@ -49,7 +49,7 @@ nix run .#update
 - **CPU-only**: Automatically detected if no NVIDIA driver is available
 
 ### macOS
-- **Apple Silicon (M1/M2/M3/M4)**: Uses MPS (Metal Performance Shaders) for GPU acceleration. PyTorch automatically detects and uses the GPU.
+- **Apple Silicon (M1/M2/M3/M4)**: Currently runs in CPU mode due to PyTorch MPS bugs (see below)
 - **Intel Mac (x86_64)**: CPU-only mode (no GPU acceleration available)
 
 ### macOS-Specific Environment Variables
@@ -60,16 +60,22 @@ These are automatically set on macOS:
 ### macOS Notes
 - Docker images are Linux-only and not available on macOS
 - First run on Apple Silicon will verify MPS availability
-- Some SD WebUI extensions may have compatibility issues with MPS
 
-### MPS Launch Flags (Auto-Applied)
-The following flags are automatically added on Apple Silicon to fix image quality issues:
-- `--no-half`: Run model in full precision (fp32) - required for MPS stability
-- `--no-half-vae`: VAE in full precision to prevent black/green images
-- `--opt-split-attention-v1`: Recommended attention optimization for Apple Silicon
+### Apple Silicon Launch Flags (Auto-Applied)
+The following flags are automatically added on Apple Silicon:
+- `--no-half`: Run model in full precision (fp32)
+- `--use-cpu all`: Run all operations on CPU
 
-These flags address known MPS half-precision (fp16) issues that cause corrupted images.
-See: [Installation on Apple Silicon](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Installation-on-Apple-Silicon)
+### Why CPU Mode Instead of MPS?
+PyTorch 2.5+ has known MPS (Metal Performance Shaders) bugs that cause green/corrupted images on Apple Silicon. Until these are fixed upstream, we default to CPU mode for reliability.
+
+See: [PyTorch Issue #139389](https://github.com/pytorch/pytorch/issues/139389)
+
+To re-enable MPS acceleration (experimental), you can try downgrading PyTorch in your venv:
+```bash
+~/sd-webui/venv/bin/pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1
+```
+Then modify `scripts/runtime.sh` to remove `--use-cpu all`.
 
 ## Architecture Overview
 
