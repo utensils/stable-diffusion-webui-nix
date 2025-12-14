@@ -41,6 +41,7 @@ nix run .#update
 
 - `CUDA_VERSION`: Override PyTorch CUDA version (`cu118`, `cu121`, `cu124`, `cpu`). Default: `cu124`. Only applies to Linux with NVIDIA GPUs.
 - `SD_WEBUI_USER_DIR`: Override the user data directory. Default: `~/sd-webui`. **IMPORTANT:** Path must NOT contain dotfile directories (starting with `.`) - Gradio blocks file serving from such paths.
+- `SD_WEBUI_FORCE_MPS`: Set to `true` to enable experimental MPS (Metal) acceleration on Apple Silicon instead of CPU mode. May produce corrupted images with PyTorch 2.5+.
 
 ## Platform Support
 
@@ -53,9 +54,11 @@ nix run .#update
 - **Intel Mac (x86_64)**: CPU-only mode (no GPU acceleration available)
 
 ### macOS-Specific Environment Variables
-These are automatically set on macOS:
+These are automatically set on macOS (currently have no effect due to CPU mode workaround):
 - `PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0`: Allows PyTorch to use all available GPU memory
 - `PYTORCH_ENABLE_MPS_FALLBACK=1`: Falls back to CPU for operations not supported by MPS
+
+These will take effect when MPS is re-enabled (via `SD_WEBUI_FORCE_MPS=true` or after PyTorch fixes).
 
 ### macOS Notes
 - Docker images are Linux-only and not available on macOS
@@ -71,11 +74,40 @@ PyTorch 2.5+ has known MPS (Metal Performance Shaders) bugs that cause green/cor
 
 See: [PyTorch Issue #139389](https://github.com/pytorch/pytorch/issues/139389)
 
-To re-enable MPS acceleration (experimental), you can try downgrading PyTorch in your venv:
+### Re-enabling MPS Acceleration (Experimental)
+
+**Option 1: Force MPS mode (may produce corrupted images)**
 ```bash
-~/sd-webui/venv/bin/pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1
+SD_WEBUI_FORCE_MPS=true nix run
 ```
-Then modify `scripts/runtime.sh` to remove `--use-cpu all`.
+
+**Option 2: Downgrade PyTorch (recommended for MPS)**
+
+Try downgrading to a known-working PyTorch version:
+```bash
+# First choice: PyTorch 2.3.1 (best MPS compatibility)
+~/sd-webui/venv/bin/pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1
+
+# If 2.3.1 wheels unavailable, try 2.4.1
+~/sd-webui/venv/bin/pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1
+```
+
+Then enable MPS mode:
+```bash
+SD_WEBUI_FORCE_MPS=true nix run
+```
+
+Check PyTorch's platform support for available versions: https://pytorch.org/get-started/previous-versions/
+
+### Performance Expectations (Apple Silicon)
+
+| Mode | Generation Speed (512x512) | Image Quality | Notes |
+|------|---------------------------|---------------|-------|
+| CPU (default) | ~30-60 seconds | ✅ Correct | Reliable, slower |
+| MPS + PyTorch 2.3.1 | ~5-10 seconds | ✅ Correct | Requires downgrade |
+| MPS + PyTorch 2.5+ | ~5-10 seconds | ❌ Green/corrupted | Known bug |
+
+*Times are approximate and vary by model and system.*
 
 ## Architecture Overview
 

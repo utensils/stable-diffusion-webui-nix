@@ -113,7 +113,9 @@
               pkgs.libGLU
             ]
             ++ pkgs.lib.optionals isDarwin [
-              # Apple SDK provides Metal, Accelerate, CoreML and other frameworks
+              # Apple SDK provides frameworks used even in CPU mode:
+              # - Accelerate: Optimized BLAS/LAPACK for numpy/scipy (CPU performance)
+              # - Metal: For future MPS support when PyTorch bugs are fixed
               pkgs.apple-sdk
             ];
 
@@ -551,7 +553,9 @@
             pkgs.libGLU
           ]
           ++ pkgs.lib.optionals isDarwin [
-            # Apple SDK provides Metal, Accelerate, CoreML and other frameworks
+            # Apple SDK provides frameworks used even in CPU mode:
+            # - Accelerate: Optimized BLAS/LAPACK for numpy/scipy (CPU performance)
+            # - Metal: For future MPS support when PyTorch bugs are fixed
             pkgs.apple-sdk
           ];
 

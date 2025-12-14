@@ -129,6 +129,7 @@ detect_pytorch_version() {
         else
             log_info "Intel Mac detected (x86_64), using CPU-only PyTorch"
             # Intel Macs don't have MPS, use CPU version
+            # Note: PyPI default wheels work for macOS, no special index needed
             TORCH_INSTALL="torch torchvision torchaudio"
         fi
     else

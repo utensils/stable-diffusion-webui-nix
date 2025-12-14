@@ -49,7 +49,12 @@ ENV_VARS=(
 
 # Platform-specific environment variables
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  # macOS / Apple Silicon MPS optimizations
+  # macOS / Apple Silicon MPS environment variables
+  # NOTE: These currently have no effect because we use --use-cpu all in runtime.sh
+  # to work around PyTorch 2.5+ MPS bugs that cause green/corrupted images.
+  # Keeping these set for when MPS is re-enabled after PyTorch fixes the bugs.
+  # See: https://github.com/pytorch/pytorch/issues/139389
+  #
   # PYTORCH_MPS_HIGH_WATERMARK_RATIO: Controls memory usage for MPS
   # Setting to 0.0 allows PyTorch to use all available GPU memory
   ENV_VARS+=("PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0")

@@ -38,9 +38,8 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         export LD_LIBRARY_PATH="/run/opengl-driver/lib:${LD_LIBRARY_PATH}"
     fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS: Library paths typically not needed with Nix
-    # MPS (Metal Performance Shaders) handles GPU acceleration on Apple Silicon
-    # Set any macOS-specific environment variables here if needed
+    # macOS: No library path manipulation needed
+    # Nix handles all library dependencies, and MPS env vars are set in config.sh
     :
 fi
 

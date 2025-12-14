@@ -105,10 +105,19 @@ build_sd_webui_args() {
         # Already added above, so we skip it here
         # --no-half: Run model in full precision (fp32) - required for MPS stability
         SD_WEBUI_ARGS+=("--no-half")
-        # --use-cpu all: Run everything on CPU to avoid MPS bugs in PyTorch 2.5+
-        # This is slower but more reliable until MPS support matures
-        SD_WEBUI_ARGS+=("--use-cpu" "all")
-        log_debug "Added MPS-specific flags: --no-half --use-cpu all (CPU mode for stability)"
+
+        # Check if user wants to force experimental MPS mode
+        if [[ "${SD_WEBUI_FORCE_MPS:-false}" == "true" ]]; then
+            log_warn "Experimental MPS mode enabled (SD_WEBUI_FORCE_MPS=true)"
+            log_warn "This may produce green/corrupted images with PyTorch 2.5+"
+            log_warn "If images are corrupted, downgrade PyTorch or unset SD_WEBUI_FORCE_MPS"
+            log_debug "Added MPS-specific flags: --no-half (experimental MPS mode)"
+        else
+            # --use-cpu all: Run everything on CPU to avoid MPS bugs in PyTorch 2.5+
+            # This is slower but more reliable until MPS support matures
+            SD_WEBUI_ARGS+=("--use-cpu" "all")
+            log_debug "Added MPS-specific flags: --no-half --use-cpu all (CPU mode for stability)"
+        fi
     fi
 
     # Enable insecure extension access for remote use (required for --listen)
