@@ -53,6 +53,7 @@
       },
       "original": {
         "owner": "AUTOMATIC1111",
+        "ref": "v1.10.1",
         "repo": "stable-diffusion-webui",
         "type": "github"
       }

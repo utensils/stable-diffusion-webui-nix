@@ -33,7 +33,10 @@ SD_WEBUI_PORT="7860"
 CUDA_VERSION="${CUDA_VERSION:-cu124}"
 
 # Directory structure
-BASE_DIR="$HOME/.config/sd-webui"
+# IMPORTANT: Path must NOT contain dotfiles (directories starting with .)
+# Gradio blocks file serving from paths like ~/.config/ due to dotfile security.
+# See: https://github.com/AUTOMATIC1111/stable-diffusion-webui/issues/13507
+BASE_DIR="${SD_WEBUI_USER_DIR:-$HOME/sd-webui}"
 CODE_DIR="$BASE_DIR/app"
 SD_WEBUI_VENV="$BASE_DIR/venv"
 OUTPUTS_DIR="$BASE_DIR/outputs"

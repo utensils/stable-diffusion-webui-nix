@@ -5,7 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     sd-webui-src = {
-      url = "github:AUTOMATIC1111/stable-diffusion-webui";
+      url = "github:AUTOMATIC1111/stable-diffusion-webui/v1.10.1";
       flake = false;
     };
   };
@@ -539,7 +539,9 @@
           shellHook = ''
             echo "Stable Diffusion WebUI development environment activated"
             echo "  SD WebUI version: ${sdWebuiVersion}"
-            export SD_WEBUI_USER_DIR="$HOME/.config/sd-webui"
+            # NOTE: Path must NOT contain dotfiles (dirs starting with .)
+            # Gradio blocks file serving from paths like ~/.config/
+            export SD_WEBUI_USER_DIR="$HOME/sd-webui"
             mkdir -p "$SD_WEBUI_USER_DIR"
             echo "User data will be stored in $SD_WEBUI_USER_DIR"
             export PYTHONPATH="$PWD:$PYTHONPATH"

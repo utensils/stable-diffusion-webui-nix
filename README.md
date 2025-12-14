@@ -6,7 +6,7 @@ A Nix flake for [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMA
 
 - **Reproducible builds** via Nix flake
 - **Automatic GPU detection** (NVIDIA CUDA, Apple MPS, CPU fallback)
-- **Persistent data** in `~/.config/sd-webui/`
+- **Persistent data** in `~/sd-webui/`
 - **Docker images** (CPU and CUDA variants)
 - **Python 3.10** (official upstream requirement)
 
@@ -88,10 +88,10 @@ docker run --gpus all -p 7860:7860 -v $PWD/data:/data sd-webui:cuda
 
 ## Directory Structure
 
-User data is stored in `~/.config/sd-webui/`:
+User data is stored in `~/sd-webui/`:
 
 ```
-~/.config/sd-webui/
+~/sd-webui/
 ├── app/                    # SD WebUI source code
 ├── venv/                   # Python virtual environment
 ├── models/                 # Model storage
@@ -105,6 +105,8 @@ User data is stored in `~/.config/sd-webui/`:
 ├── extensions/             # Installed extensions
 └── configs/                # User configurations
 ```
+
+**Note:** The path must NOT contain directories starting with `.` (dotfiles). Gradio blocks file serving from such paths, causing 403 errors. Override with `SD_WEBUI_USER_DIR` if needed.
 
 ## GPU Support
 
