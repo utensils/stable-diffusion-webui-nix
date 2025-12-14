@@ -1,0 +1,162 @@
+[project]
+name = "stable-diffusion-webui-nix"
+version = "1.10.1"
+description = "A Nix flake for Stable Diffusion WebUI with Python 3.10"
+requires-python = ">=3.10"
+
+[tool.ruff]
+# Set the target Python version
+target-version = "py310"
+
+# Set line length to 100 (common for Python projects)
+line-length = 100
+
+# Include Python source files
+include = ["**/*.py"]
+
+# Exclude common directories
+exclude = [
+    ".git",
+    ".sd-webui",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "__pycache__",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+# Enable specific rule sets
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade (modern Python syntax)
+    "YTT",    # flake8-2020
+    "ASYNC",  # flake8-async
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "COM",    # flake8-commas
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "T10",    # flake8-debugger
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "G",      # flake8-logging-format
+    "PIE",    # flake8-pie
+    "T20",    # flake8-print
+    "PT",     # flake8-pytest-style
+    "Q",      # flake8-quotes
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SLF",    # flake8-self
+    "SIM",    # flake8-simplify
+    "TID",    # flake8-tidy-imports
+    "TCH",    # flake8-type-checking
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "ERA",    # eradicate (commented-out code)
+    "PL",     # pylint
+    "TRY",    # tryceratops
+    "PERF",   # perflint
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignore specific rules that are genuinely incompatible with SD WebUI patterns
+ignore = [
+    "T20",      # Allow print statements (SD WebUI uses prints for status updates)
+    "G004",     # Allow f-strings in logging (more readable than % formatting)
+    "COM812",   # Trailing comma conflicts with formatter
+    "ISC001",   # Implicit string concatenation conflicts with formatter
+    "ARG001",   # Allow unused function arguments (API signatures require specific args)
+    "TRY003",   # Allow long exception messages (descriptive errors are helpful)
+    "PTH",      # Allow os.path (SD WebUI codebase uses os.path extensively for compatibility)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow unused imports in __init__.py files
+"__init__.py" = ["F401", "F403"]
+
+[tool.ruff.lint.isort]
+# Configure import sorting
+known-first-party = ["modules"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[tool.ruff.lint.mccabe]
+# Maximum complexity for a function
+max-complexity = 15
+
+[tool.ruff.lint.pydocstyle]
+# Use Google-style docstrings
+convention = "google"
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+
+# Indent with 4 spaces
+indent-style = "space"
+
+# Use Unix line endings
+line-ending = "lf"
+
+# Add trailing comma to multiline collections
+skip-magic-trailing-comma = false
+
+[tool.pyright]
+# Specify the Python version
+pythonVersion = "3.10"
+
+# Exclude directories
+exclude = [
+    "**/__pycache__",
+    "**/node_modules",
+    ".git",
+    ".sd-webui",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+]
+
+# Type checking mode
+typeCheckingMode = "basic"
+
+# Report settings - be lenient for SD WebUI patterns
+reportMissingImports = "warning"
+reportMissingTypeStubs = "none"
+reportUnknownParameterType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownVariableType = "none"
+reportUnknownMemberType = "none"
+reportUntypedFunctionDecorator = "none"
+reportUntypedClassDecorator = "none"
+reportUntypedBaseClass = "none"
+reportGeneralTypeIssues = "warning"
+reportOptionalMemberAccess = "warning"
+reportOptionalSubscript = "warning"
+reportPrivateImportUsage = "none"
+
+# Allow implicit string concatenation
+reportImplicitStringConcatenation = "none"
+
+# Stub path (for types if we add them later)
+stubPath = "typings"
+
+# Use library code for inline type analysis
+useLibraryCodeForTypes = true
+
+[tool.pyright.defineConstant]
+# Define constants for conditional imports
+DEBUG = true
