@@ -68,44 +68,58 @@ display_startup_info() {
     display_notices
 }
 
-# Build the SD WebUI command arguments
+# Build the SD WebUI command arguments into SD_WEBUI_ARGS array
+# This function populates a global array that callers can use
 build_sd_webui_args() {
-    local args=()
+    SD_WEBUI_ARGS=()
 
     # Add port
-    args+=("--port" "$SD_WEBUI_PORT")
+    SD_WEBUI_ARGS+=("--port" "$SD_WEBUI_PORT")
 
     # Skip the internal torch check since we handle it ourselves
-    args+=("--skip-torch-cuda-test")
+    SD_WEBUI_ARGS+=("--skip-torch-cuda-test")
 
     # Note: We don't use --skip-install because SD WebUI needs to clone
     # repositories (k-diffusion, BLIP, etc.) and install additional packages
     # like clip, open_clip on first run
 
     # Set data directory
-    args+=("--data-dir" "$BASE_DIR")
+    SD_WEBUI_ARGS+=("--data-dir" "$BASE_DIR")
 
     # Add paths to Gradio's allowed_paths to fix 403 errors when listening on network
     # This is required because Gradio applies stricter security when --listen is used
     # We add explicit paths for all directories that serve static files
-    args+=("--gradio-allowed-path" "$CODE_DIR")
-    args+=("--gradio-allowed-path" "$BASE_DIR")
-    args+=("--gradio-allowed-path" "$OUTPUTS_DIR")
-    args+=("--gradio-allowed-path" "$CODE_DIR/javascript")
-    args+=("--gradio-allowed-path" "$CODE_DIR/extensions-builtin")
-    args+=("--gradio-allowed-path" "$BASE_DIR/extensions")
+    SD_WEBUI_ARGS+=("--gradio-allowed-path" "$(realpath "$CODE_DIR")")
+    SD_WEBUI_ARGS+=("--gradio-allowed-path" "$(realpath "$BASE_DIR")")
+    SD_WEBUI_ARGS+=("--gradio-allowed-path" "$(realpath "$OUTPUTS_DIR")")
+    SD_WEBUI_ARGS+=("--gradio-allowed-path" "$(realpath "$CODE_DIR/javascript")")
+    SD_WEBUI_ARGS+=("--gradio-allowed-path" "$(realpath "$CODE_DIR/extensions-builtin")")
+    SD_WEBUI_ARGS+=("--gradio-allowed-path" "$(realpath "$BASE_DIR/extensions")")
+
+    # macOS Apple Silicon (MPS) specific flags
+    # MPS has issues with half-precision (fp16) operations that cause bad/corrupted images
+    # See: https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Installation-on-Apple-Silicon
+    if [[ "$OSTYPE" == "darwin"* ]] && [[ $(uname -m) == "arm64" ]]; then
+        # --no-half: Run model in full precision (fp32) - required for MPS stability
+        SD_WEBUI_ARGS+=("--no-half")
+        # --no-half-vae: VAE in full precision to prevent black/green images
+        SD_WEBUI_ARGS+=("--no-half-vae")
+        # --opt-split-attention-v1: Recommended attention optimization for Apple Silicon
+        SD_WEBUI_ARGS+=("--opt-split-attention-v1")
+        log_debug "Added MPS-specific flags: --no-half --no-half-vae --opt-split-attention-v1"
+    fi
 
     # Enable insecure extension access for remote use (required for --listen)
     # This allows extensions to be managed remotely
     if [ "$LISTEN_MODE" = true ]; then
-        args+=("--enable-insecure-extension-access")
+        SD_WEBUI_ARGS+=("--enable-insecure-extension-access")
     fi
 
     # Add any additional arguments passed through (ARGS is set in config.sh)
     # shellcheck disable=SC2153
-    args+=("${ARGS[@]}")
+    SD_WEBUI_ARGS+=("${ARGS[@]}")
 
-    echo "${args[@]}"
+    log_debug "Launch args: ${SD_WEBUI_ARGS[*]}"
 }
 
 # Start SD WebUI with browser opening if requested
@@ -119,33 +133,14 @@ start_with_browser() {
     cd "$CODE_DIR" || exit 1
     log_info "Starting SD WebUI in background..."
 
-    # Build command arguments as an array to preserve proper argument handling
-    local -a sd_webui_args=()
-    sd_webui_args+=("--port" "$SD_WEBUI_PORT")
-    sd_webui_args+=("--skip-torch-cuda-test")
-    sd_webui_args+=("--data-dir" "$BASE_DIR")
-    # Add paths to Gradio's allowed_paths - use realpath for canonical paths
-    # Include all directories that serve static files to prevent 403 errors
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR")")
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$BASE_DIR")")
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$OUTPUTS_DIR")")
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR/javascript")")
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR/extensions-builtin")")
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$BASE_DIR/extensions")")
-    # Enable insecure extension access for remote use when listening
-    if [ "$LISTEN_MODE" = true ]; then
-        sd_webui_args+=("--enable-insecure-extension-access")
-    fi
-    # Add any user-provided arguments
-    sd_webui_args+=("${ARGS[@]}")
-
-    log_debug "Launch args: ${sd_webui_args[*]}"
+    # Build command arguments
+    build_sd_webui_args
 
     # Ensure library paths are preserved for the Python subprocess
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" "$SD_WEBUI_VENV/bin/python" "$CODE_DIR/launch.py" "${sd_webui_args[@]}" &
+        LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" "$SD_WEBUI_VENV/bin/python" "$CODE_DIR/launch.py" "${SD_WEBUI_ARGS[@]}" &
     else
-        "$SD_WEBUI_VENV/bin/python" "$CODE_DIR/launch.py" "${sd_webui_args[@]}" &
+        "$SD_WEBUI_VENV/bin/python" "$CODE_DIR/launch.py" "${SD_WEBUI_ARGS[@]}" &
     fi
     PID=$!
 
@@ -181,33 +176,14 @@ start_normal() {
     cd "$CODE_DIR" || exit 1
     log_info "Starting SD WebUI... Press Ctrl+C to exit"
 
-    # Build command arguments as an array to preserve proper argument handling
-    local -a sd_webui_args=()
-    sd_webui_args+=("--port" "$SD_WEBUI_PORT")
-    sd_webui_args+=("--skip-torch-cuda-test")
-    sd_webui_args+=("--data-dir" "$BASE_DIR")
-    # Add paths to Gradio's allowed_paths - use realpath for canonical paths
-    # Include all directories that serve static files to prevent 403 errors
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR")")
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$BASE_DIR")")
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$OUTPUTS_DIR")")
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR/javascript")")
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$CODE_DIR/extensions-builtin")")
-    sd_webui_args+=("--gradio-allowed-path" "$(realpath "$BASE_DIR/extensions")")
-    # Enable insecure extension access for remote use when listening
-    if [ "$LISTEN_MODE" = true ]; then
-        sd_webui_args+=("--enable-insecure-extension-access")
-    fi
-    # Add any user-provided arguments
-    sd_webui_args+=("${ARGS[@]}")
-
-    log_debug "Launch args: ${sd_webui_args[*]}"
+    # Build command arguments
+    build_sd_webui_args
 
     # Ensure library paths are preserved for the Python subprocess
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" exec "$SD_WEBUI_VENV/bin/python" "$CODE_DIR/launch.py" "${sd_webui_args[@]}"
+        LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" exec "$SD_WEBUI_VENV/bin/python" "$CODE_DIR/launch.py" "${SD_WEBUI_ARGS[@]}"
     else
-        exec "$SD_WEBUI_VENV/bin/python" "$CODE_DIR/launch.py" "${sd_webui_args[@]}"
+        exec "$SD_WEBUI_VENV/bin/python" "$CODE_DIR/launch.py" "${SD_WEBUI_ARGS[@]}"
     fi
 }
 

@@ -41,12 +41,21 @@ CODE_DIR="$BASE_DIR/app"
 SD_WEBUI_VENV="$BASE_DIR/venv"
 OUTPUTS_DIR="$BASE_DIR/outputs"
 
-# Environment variables for SD WebUI
+# Environment variables for SD WebUI (base set)
 ENV_VARS=(
-  "PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0"
   "SD_WEBUI_USER_DIR=$BASE_DIR"
   "GRADIO_SERVER_PORT=$SD_WEBUI_PORT"
 )
+
+# Platform-specific environment variables
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS / Apple Silicon MPS optimizations
+  # PYTORCH_MPS_HIGH_WATERMARK_RATIO: Controls memory usage for MPS
+  # Setting to 0.0 allows PyTorch to use all available GPU memory
+  ENV_VARS+=("PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0")
+  # PYTORCH_ENABLE_MPS_FALLBACK: Fall back to CPU for unsupported MPS ops
+  ENV_VARS+=("PYTORCH_ENABLE_MPS_FALLBACK=1")
+fi
 
 # Flag for browser opening
 OPEN_BROWSER=false

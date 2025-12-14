@@ -39,8 +39,37 @@ nix run .#update
 
 ## Environment Variables
 
-- `CUDA_VERSION`: Override PyTorch CUDA version (`cu118`, `cu121`, `cu124`, `cpu`). Default: `cu124`
+- `CUDA_VERSION`: Override PyTorch CUDA version (`cu118`, `cu121`, `cu124`, `cpu`). Default: `cu124`. Only applies to Linux with NVIDIA GPUs.
 - `SD_WEBUI_USER_DIR`: Override the user data directory. Default: `~/sd-webui`. **IMPORTANT:** Path must NOT contain dotfile directories (starting with `.`) - Gradio blocks file serving from such paths.
+
+## Platform Support
+
+### Linux (x86_64)
+- **NVIDIA GPU**: Full CUDA support with configurable CUDA version via `CUDA_VERSION`
+- **CPU-only**: Automatically detected if no NVIDIA driver is available
+
+### macOS
+- **Apple Silicon (M1/M2/M3/M4)**: Uses MPS (Metal Performance Shaders) for GPU acceleration. PyTorch automatically detects and uses the GPU.
+- **Intel Mac (x86_64)**: CPU-only mode (no GPU acceleration available)
+
+### macOS-Specific Environment Variables
+These are automatically set on macOS:
+- `PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0`: Allows PyTorch to use all available GPU memory
+- `PYTORCH_ENABLE_MPS_FALLBACK=1`: Falls back to CPU for operations not supported by MPS
+
+### macOS Notes
+- Docker images are Linux-only and not available on macOS
+- First run on Apple Silicon will verify MPS availability
+- Some SD WebUI extensions may have compatibility issues with MPS
+
+### MPS Launch Flags (Auto-Applied)
+The following flags are automatically added on Apple Silicon to fix image quality issues:
+- `--no-half`: Run model in full precision (fp32) - required for MPS stability
+- `--no-half-vae`: VAE in full precision to prevent black/green images
+- `--opt-split-attention-v1`: Recommended attention optimization for Apple Silicon
+
+These flags address known MPS half-precision (fp16) issues that cause corrupted images.
+See: [Installation on Apple Silicon](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Installation-on-Apple-Silicon)
 
 ## Architecture Overview
 
@@ -52,7 +81,7 @@ This is a Nix flake that packages [Stable Diffusion WebUI](https://github.com/AU
 
 2. **Nix variable substitution**: Shell scripts use `@varName@` placeholders that `pkgs.replaceVars` substitutes at build time:
    - `config.sh`: `@pythonEnv@`, `@sdWebuiSrc@`, `@sdWebuiVersion@`
-   - `launcher.sh`: `@libPath@`
+   - `launcher.sh`: `@libPath@` (Linux-only; empty on macOS)
    - Other scripts (`logger.sh`, `install.sh`, `persistence.sh`, `runtime.sh`) are copied directly without substitutions.
 
 3. **Persistent data**: All user data lives in `~/sd-webui/` with symlinks from the app directory. Models, outputs, extensions, and venv persist across updates.

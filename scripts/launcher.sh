@@ -26,16 +26,22 @@ source "$SCRIPT_DIR/persistence.sh"
 source "$SCRIPT_DIR/runtime.sh"
 
 # Platform-specific library path handling
+# Note: @libPath@ is only set on Linux, empty on macOS
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # Linux: Set LD_LIBRARY_PATH for libstdc++ and other required libraries
-    export LD_LIBRARY_PATH="@libPath@:${LD_LIBRARY_PATH:-}"
+    # shellcheck disable=SC2157  # @libPath@ is substituted at build time by Nix
+    if [[ -n "@libPath@" ]]; then
+        export LD_LIBRARY_PATH="@libPath@:${LD_LIBRARY_PATH:-}"
+    fi
     # Add NVIDIA/CUDA libraries if available
     if [ -d "/run/opengl-driver/lib" ]; then
         export LD_LIBRARY_PATH="/run/opengl-driver/lib:${LD_LIBRARY_PATH}"
     fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS: Set DYLD_LIBRARY_PATH if needed (usually not required with Nix)
-    export DYLD_LIBRARY_PATH="@libPath@:${DYLD_LIBRARY_PATH:-}"
+    # macOS: Library paths typically not needed with Nix
+    # MPS (Metal Performance Shaders) handles GPU acceleration on Apple Silicon
+    # Set any macOS-specific environment variables here if needed
+    :
 fi
 
 # Main function
