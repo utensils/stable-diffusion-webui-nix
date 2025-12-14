@@ -113,6 +113,18 @@ display_url_info() {
 display_notices() {
     echo -e "${YELLOW}NOTE:${RESET} First time startup may take several minutes while dependencies are downloaded." >&2
     echo -e "${YELLOW}NOTE:${RESET} Models will be downloaded automatically on first use." >&2
+
+    # Platform-specific notes
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        local arch
+        arch=$(uname -m)
+        if [[ "$arch" == "arm64" ]]; then
+            echo -e "${CYAN}INFO:${RESET} Running on Apple Silicon with MPS (Metal) acceleration." >&2
+        else
+            echo -e "${CYAN}INFO:${RESET} Running on Intel Mac (CPU mode)." >&2
+        fi
+    fi
+
     echo -e "\nTo open manually: open http://127.0.0.1:$SD_WEBUI_PORT" >&2
 }
 

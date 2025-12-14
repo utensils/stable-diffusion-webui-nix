@@ -106,7 +106,7 @@ detect_pytorch_version() {
     local TORCH_INSTALL=""
     local cuda_ver="${CUDA_VERSION:-cu124}"
 
-    # Check for NVIDIA GPU
+    # Check for NVIDIA GPU (Linux)
     if command -v nvidia-smi &> /dev/null; then
         log_info "NVIDIA GPU detected"
         if nvidia-smi &> /dev/null; then
@@ -118,10 +118,20 @@ detect_pytorch_version() {
             log_warn "NVIDIA driver not functioning properly, falling back to CPU"
             TORCH_INSTALL="torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu"
         fi
-    elif [[ "$OSTYPE" == "darwin"* ]] && [[ $(uname -m) == "arm64" ]]; then
-        log_info "Apple Silicon detected, using MPS acceleration"
-        # On macOS, use default PyPI packages which include MPS support
-        TORCH_INSTALL="torch torchvision torchaudio"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS: Check for Apple Silicon (arm64) or Intel (x86_64)
+        local arch
+        arch=$(uname -m)
+        if [[ "$arch" == "arm64" ]]; then
+            log_info "Apple Silicon (M1/M2/M3/M4) detected, using MPS acceleration"
+            # PyPI packages for macOS include native MPS support
+            TORCH_INSTALL="torch torchvision torchaudio"
+        else
+            log_info "Intel Mac detected (x86_64), using CPU-only PyTorch"
+            # Intel Macs don't have MPS, use CPU version
+            # Note: PyPI default wheels work for macOS, no special index needed
+            TORCH_INSTALL="torch torchvision torchaudio"
+        fi
     else
         log_info "No GPU detected, using CPU-only PyTorch"
         TORCH_INSTALL="torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu"
@@ -189,36 +199,54 @@ setup_venv() {
         echo "$SD_WEBUI_VERSION" > "$version_file"
         log_info "Python environment setup complete for SD WebUI $SD_WEBUI_VERSION"
 
-        # Clear CUDA check file to re-verify after update
-        rm -f "$SD_WEBUI_VENV/.cuda_checked"
+        # Clear GPU check file to re-verify after update
+        rm -f "$SD_WEBUI_VENV/.gpu_checked"
     fi
 
     # Check if we need to upgrade PyTorch for GPU support
-    local cuda_check_file="$SD_WEBUI_VENV/.cuda_checked"
-    if [ ! -f "$cuda_check_file" ] && command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
-        # Test CUDA availability with proper library paths
-        local cuda_test_result=1
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" "$SD_WEBUI_VENV/bin/python" -c "import torch; exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null && cuda_test_result=0
-        else
-            "$SD_WEBUI_VENV/bin/python" -c "import torch; exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null && cuda_test_result=0
-        fi
+    local gpu_check_file="$SD_WEBUI_VENV/.gpu_checked"
 
-        if [ $cuda_test_result -ne 0 ]; then
-            log_warn "CUDA not available in current PyTorch installation"
-            log_info "Reinstalling PyTorch with CUDA support..."
-            local TORCH_INSTALL
-            TORCH_INSTALL=$(detect_pytorch_version)
-            "$SD_WEBUI_VENV/bin/pip" uninstall -y torch torchvision torchaudio
-            # shellcheck disable=SC2086
-            "$SD_WEBUI_VENV/bin/pip" install $TORCH_INSTALL
-            touch "$cuda_check_file"
+    if [ ! -f "$gpu_check_file" ]; then
+        if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
+            # Linux: Test CUDA availability with proper library paths
+            local cuda_test_result=1
+            LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" "$SD_WEBUI_VENV/bin/python" -c "import torch; exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null && cuda_test_result=0
+
+            if [ $cuda_test_result -ne 0 ]; then
+                log_warn "CUDA not available in current PyTorch installation"
+                log_info "Reinstalling PyTorch with CUDA support..."
+                local TORCH_INSTALL
+                TORCH_INSTALL=$(detect_pytorch_version)
+                "$SD_WEBUI_VENV/bin/pip" uninstall -y torch torchvision torchaudio
+                # shellcheck disable=SC2086
+                "$SD_WEBUI_VENV/bin/pip" install $TORCH_INSTALL
+            else
+                log_info "PyTorch CUDA support verified"
+            fi
+            touch "$gpu_check_file"
+        elif [[ "$OSTYPE" == "darwin"* ]] && [[ $(uname -m) == "arm64" ]]; then
+            # macOS Apple Silicon: Test MPS availability
+            local mps_test_result=1
+            "$SD_WEBUI_VENV/bin/python" -c "import torch; exit(0 if torch.backends.mps.is_available() else 1)" 2>/dev/null && mps_test_result=0
+
+            if [ $mps_test_result -eq 0 ]; then
+                log_info "PyTorch MPS (Metal) support verified for Apple Silicon"
+            else
+                log_warn "MPS not available - check PyTorch installation"
+                log_info "Reinstalling PyTorch..."
+                local TORCH_INSTALL
+                TORCH_INSTALL=$(detect_pytorch_version)
+                "$SD_WEBUI_VENV/bin/pip" uninstall -y torch torchvision torchaudio
+                # shellcheck disable=SC2086
+                "$SD_WEBUI_VENV/bin/pip" install $TORCH_INSTALL
+            fi
+            touch "$gpu_check_file"
         else
-            log_info "PyTorch already has CUDA support"
-            touch "$cuda_check_file"
+            log_debug "No GPU acceleration available, using CPU"
+            touch "$gpu_check_file"
         fi
     else
-        log_debug "Skipping CUDA check (already verified)"
+        log_debug "Skipping GPU check (already verified)"
     fi
 }
 

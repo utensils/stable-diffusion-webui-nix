@@ -45,6 +45,10 @@
           ignoreCollisions = true;
         };
 
+        # Platform detection helpers
+        isLinux = pkgs.stdenv.isLinux;
+        isDarwin = pkgs.stdenv.isDarwin;
+
         # Process each script file individually using replaceVars
         # Only replace variables that actually exist in each script
         configScript = pkgs.replaceVars ./scripts/config.sh {
@@ -52,15 +56,22 @@
           sdWebuiSrc = sd-webui-src;
         };
 
+        # Library path for Linux (empty on macOS - not needed)
+        libPath =
+          if isLinux then
+            pkgs.lib.makeLibraryPath [
+              pkgs.stdenv.cc.cc.lib
+              pkgs.libGL
+              pkgs.libGLU
+              pkgs.glib
+              pkgs.zlib
+            ]
+          else
+            "";
+
         # Main launcher script with substitutions
         launcherScript = pkgs.replaceVars ./scripts/launcher.sh {
-          libPath = pkgs.lib.makeLibraryPath [
-            pkgs.stdenv.cc.cc.lib
-            pkgs.libGL
-            pkgs.libGLU
-            pkgs.glib
-            pkgs.zlib
-          ];
+          inherit libPath;
         };
 
         # Create a directory with all launcher scripts
@@ -95,9 +106,17 @@
               pythonEnv
             ];
             buildInputs = [
+              pkgs.stdenv.cc.cc.lib
+            ]
+            ++ pkgs.lib.optionals isLinux [
               pkgs.libGL
               pkgs.libGLU
-              pkgs.stdenv.cc.cc.lib
+            ]
+            ++ pkgs.lib.optionals isDarwin [
+              # Apple SDK provides frameworks used even in CPU mode:
+              # - Accelerate: Optimized BLAS/LAPACK for numpy/scipy (CPU performance)
+              # - Metal: For future MPS support when PyTorch bugs are fixed
+              pkgs.apple-sdk
             ];
 
             # Skip build and configure phases
@@ -517,8 +536,6 @@
           packages = [
             pythonEnv
             pkgs.stdenv.cc
-            pkgs.libGL
-            pkgs.libGLU
             # Development tools
             pkgs.git
             pkgs.shellcheck
@@ -531,9 +548,15 @@
             pkgs.jq
             pkgs.curl
           ]
-          ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-            # macOS-specific tools
-            pkgs.darwin.apple_sdk.frameworks.Metal
+          ++ pkgs.lib.optionals isLinux [
+            pkgs.libGL
+            pkgs.libGLU
+          ]
+          ++ pkgs.lib.optionals isDarwin [
+            # Apple SDK provides frameworks used even in CPU mode:
+            # - Accelerate: Optimized BLAS/LAPACK for numpy/scipy (CPU performance)
+            # - Metal: For future MPS support when PyTorch bugs are fixed
+            pkgs.apple-sdk
           ];
 
           shellHook = ''

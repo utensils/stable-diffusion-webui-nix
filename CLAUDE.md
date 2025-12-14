@@ -39,8 +39,75 @@ nix run .#update
 
 ## Environment Variables
 
-- `CUDA_VERSION`: Override PyTorch CUDA version (`cu118`, `cu121`, `cu124`, `cpu`). Default: `cu124`
+- `CUDA_VERSION`: Override PyTorch CUDA version (`cu118`, `cu121`, `cu124`, `cpu`). Default: `cu124`. Only applies to Linux with NVIDIA GPUs.
 - `SD_WEBUI_USER_DIR`: Override the user data directory. Default: `~/sd-webui`. **IMPORTANT:** Path must NOT contain dotfile directories (starting with `.`) - Gradio blocks file serving from such paths.
+- `SD_WEBUI_FORCE_MPS`: Set to `true` to enable experimental MPS (Metal) acceleration on Apple Silicon instead of CPU mode. May produce corrupted images with PyTorch 2.5+.
+
+## Platform Support
+
+### Linux (x86_64)
+- **NVIDIA GPU**: Full CUDA support with configurable CUDA version via `CUDA_VERSION`
+- **CPU-only**: Automatically detected if no NVIDIA driver is available
+
+### macOS
+- **Apple Silicon (M1/M2/M3/M4)**: Currently runs in CPU mode due to PyTorch MPS bugs (see below)
+- **Intel Mac (x86_64)**: CPU-only mode (no GPU acceleration available)
+
+### macOS-Specific Environment Variables
+These are automatically set on macOS (currently have no effect due to CPU mode workaround):
+- `PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0`: Allows PyTorch to use all available GPU memory
+- `PYTORCH_ENABLE_MPS_FALLBACK=1`: Falls back to CPU for operations not supported by MPS
+
+These will take effect when MPS is re-enabled (via `SD_WEBUI_FORCE_MPS=true` or after PyTorch fixes).
+
+### macOS Notes
+- Docker images are Linux-only and not available on macOS
+- First run on Apple Silicon will verify MPS availability
+
+### Apple Silicon Launch Flags (Auto-Applied)
+The following flags are automatically added on Apple Silicon:
+- `--no-half`: Run model in full precision (fp32)
+- `--use-cpu all`: Run all operations on CPU
+
+### Why CPU Mode Instead of MPS?
+PyTorch 2.5+ has known MPS (Metal Performance Shaders) bugs that cause green/corrupted images on Apple Silicon. Until these are fixed upstream, we default to CPU mode for reliability.
+
+See: [PyTorch Issue #139389](https://github.com/pytorch/pytorch/issues/139389)
+
+### Re-enabling MPS Acceleration (Experimental)
+
+**Option 1: Force MPS mode (may produce corrupted images)**
+```bash
+SD_WEBUI_FORCE_MPS=true nix run
+```
+
+**Option 2: Downgrade PyTorch (recommended for MPS)**
+
+Try downgrading to a known-working PyTorch version:
+```bash
+# First choice: PyTorch 2.3.1 (best MPS compatibility)
+~/sd-webui/venv/bin/pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1
+
+# If 2.3.1 wheels unavailable, try 2.4.1
+~/sd-webui/venv/bin/pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1
+```
+
+Then enable MPS mode:
+```bash
+SD_WEBUI_FORCE_MPS=true nix run
+```
+
+Check PyTorch's platform support for available versions: https://pytorch.org/get-started/previous-versions/
+
+### Performance Expectations (Apple Silicon)
+
+| Mode | Generation Speed (512x512) | Image Quality | Notes |
+|------|---------------------------|---------------|-------|
+| CPU (default) | ~30-60 seconds | ✅ Correct | Reliable, slower |
+| MPS + PyTorch 2.3.1 | ~5-10 seconds | ✅ Correct | Requires downgrade |
+| MPS + PyTorch 2.5+ | ~5-10 seconds | ❌ Green/corrupted | Known bug |
+
+*Times are approximate and vary by model and system.*
 
 ## Architecture Overview
 
@@ -52,7 +119,7 @@ This is a Nix flake that packages [Stable Diffusion WebUI](https://github.com/AU
 
 2. **Nix variable substitution**: Shell scripts use `@varName@` placeholders that `pkgs.replaceVars` substitutes at build time:
    - `config.sh`: `@pythonEnv@`, `@sdWebuiSrc@`, `@sdWebuiVersion@`
-   - `launcher.sh`: `@libPath@`
+   - `launcher.sh`: `@libPath@` (Linux-only; empty on macOS)
    - Other scripts (`logger.sh`, `install.sh`, `persistence.sh`, `runtime.sh`) are copied directly without substitutions.
 
 3. **Persistent data**: All user data lives in `~/sd-webui/` with symlinks from the app directory. Models, outputs, extensions, and venv persist across updates.
