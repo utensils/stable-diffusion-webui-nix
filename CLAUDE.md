@@ -226,13 +226,19 @@ If you see 403 errors for `style.css`, `script.js`, or other static files:
 
 ## Updating SD WebUI Version
 
-SD WebUI source is pinned to a specific tag (currently `v1.10.1`) in the flake input.
+SD WebUI source tracks the `dev` branch of AUTOMATIC1111/stable-diffusion-webui. The specific commit is pinned in `flake.lock`.
 
-To update to a new version, edit `flake.nix` and change the tag:
+To update to the latest dev branch commit:
+
+```bash
+nix flake update sd-webui-src
+```
+
+To switch to a specific tag or branch, edit `flake.nix`:
 
 ```nix
 sd-webui-src = {
-  url = "github:AUTOMATIC1111/stable-diffusion-webui/v1.10.1";  # Change tag here
+  url = "github:AUTOMATIC1111/stable-diffusion-webui/dev";  # Change branch/tag here
   flake = false;
 };
 ```

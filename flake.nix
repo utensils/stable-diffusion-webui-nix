@@ -5,7 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     sd-webui-src = {
-      url = "github:AUTOMATIC1111/stable-diffusion-webui/v1.10.1";
+      url = "github:AUTOMATIC1111/stable-diffusion-webui/dev";
       flake = false;
     };
   };

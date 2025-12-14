@@ -44,16 +44,16 @@
     "sd-webui-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1722084579,
-        "narHash": "sha256-lY+fZQ9yzFBVX5hrmvaIAm/FaRnsIkB2z4WpcJMmL3w=",
+        "lastModified": 1759867570,
+        "narHash": "sha256-pUxWvkGcC1opECUM3flSomnS85qi7Brqkv8eyjtP89Q=",
         "owner": "AUTOMATIC1111",
         "repo": "stable-diffusion-webui",
-        "rev": "82a973c04367123ae98bd9abdf80d9eda9b910e2",
+        "rev": "6685e532dfb40deee3287ef62a66bf4465728517",
         "type": "github"
       },
       "original": {
         "owner": "AUTOMATIC1111",
-        "ref": "v1.10.1",
+        "ref": "dev",
         "repo": "stable-diffusion-webui",
         "type": "github"
       }

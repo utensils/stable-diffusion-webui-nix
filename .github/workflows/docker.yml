@@ -69,8 +69,15 @@ jobs:
       - name: Extract metadata
         id: meta
         run: |
-          # Get SD WebUI version from flake.lock (the pinned version tag)
-          VERSION=$(nix flake metadata --json 2>/dev/null | jq -r '.locks.nodes["sd-webui-src"].original.ref // "v1.10.1"' | sed 's/^v//')
+          # Get SD WebUI version from flake.lock
+          # Use tag/branch ref if it looks like a version (v*), otherwise use short commit hash
+          REF=$(nix flake metadata --json 2>/dev/null | jq -r '.locks.nodes["sd-webui-src"].original.ref // "dev"')
+          if [[ "$REF" == v* ]]; then
+            VERSION="${REF#v}"
+          else
+            # For non-version refs (like 'dev'), use the short commit hash
+            VERSION=$(nix flake metadata --json 2>/dev/null | jq -r '.locks.nodes["sd-webui-src"].locked.rev[0:7]')
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
           # Generate Docker tags
