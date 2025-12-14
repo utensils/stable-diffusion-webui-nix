@@ -165,6 +165,16 @@ nix flake update sd-webui-src
 nix flake update
 ```
 
+## CI/CD
+
+This repository uses GitHub Actions for continuous integration:
+
+- **Docker builds**: Automatically builds and publishes CPU and CUDA Docker images to `ghcr.io/utensils/stable-diffusion-webui-nix`
+- **Claude Code Review**: Automated PR reviews using Claude
+- **Claude Code**: Respond to `@claude` mentions in issues and PRs
+
+Docker images are tagged with both the version (e.g., `1.10.1`) and `latest`.
+
 ## License
 
 This Nix flake is licensed under the [MIT License](LICENSE).
